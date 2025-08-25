@@ -306,12 +306,23 @@ IMPORTANT REQUIREMENTS:
       }, 3, 2000, 'Perplexity API Call')
 
       if (!response.ok) {
-        const errorData = await response.text()
+        let errorData = 'Unknown error'
+        try {
+          errorData = await response.text()
+        } catch (e) {
+          console.error('Failed to read error response:', e)
+        }
         aiMonitor.error(`HTTP ${response.status}: ${errorData}`)
         throw new Error(`Perplexity API error: ${response.status}`)
       }
 
-      const data = await response.json()
+      let data: any
+      try {
+        data = await response.json()
+      } catch (e) {
+        aiMonitor.error('Failed to parse JSON response')
+        throw new Error('Invalid JSON response from Perplexity API')
+      }
       aiMonitor.finish(true)
       
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
