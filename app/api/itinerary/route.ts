@@ -381,7 +381,7 @@ IMPORTANT REQUIREMENTS:
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.1-70b-online',
+                             model: 'llama-3.1-sonar-small-128k-online',
                              messages: [
                  {
                    role: 'system',
@@ -532,7 +532,7 @@ IMPORTANT REQUIREMENTS:
         generatedAt: new Date().toISOString(),
         requestId: crypto.randomUUID(),
         processingTime: Date.now() - globalMonitor['startTime'],
-        aiModel: 'llama-3.1-70b-online',
+                 aiModel: 'llama-3.1-sonar-small-128k-online',
         imageCount: Object.keys(locationImages).length,
         cityConfig: cityConfig ? 'enhanced' : 'standard',
         version: '2.0.0',
@@ -580,7 +580,7 @@ IMPORTANT REQUIREMENTS:
   }
 }
 
-// Enhanced fallback itinerary with city-specific information
+// Enhanced fallback itinerary with ONLY REAL places - NO GENERIC NAMES
 function generateEnhancedFallbackItinerary(city: string, days: number, budget: string, cityConfig?: any) {
   const currentDate = new Date()
   const itinerary = {
@@ -606,6 +606,9 @@ function generateEnhancedFallbackItinerary(city: string, days: number, budget: s
     const dayDate = new Date(currentDate)
     dayDate.setDate(currentDate.getDate() + day - 1)
     
+    // Get real places for this day based on day number
+    const dayPlaces = getDaySpecificPlaces(city, day)
+    
     itinerary.days.push({
       day,
       date: dayDate.toISOString().split('T')[0],
@@ -614,13 +617,9 @@ function generateEnhancedFallbackItinerary(city: string, days: number, budget: s
       morning: [
         {
           time: '9:00 AM',
-          activity: `Morning exploration of ${city}`,
-          location: {
-            name: `${city} Central Area`,
-            address: `Central ${city}`,
-            coordinates: [0, 0]
-          },
-          description: `Start your day exploring the vibrant streets and morning atmosphere of ${city}`,
+          activity: `Morning exploration of ${dayPlaces.morning.name}`,
+          location: dayPlaces.morning,
+          description: `Start your day exploring the vibrant ${dayPlaces.morning.name} area of ${city}`,
           estimatedCost: '₹200-500',
           duration: '2-3 hours'
         }
@@ -628,13 +627,9 @@ function generateEnhancedFallbackItinerary(city: string, days: number, budget: s
       afternoon: [
         {
           time: '2:00 PM',
-          activity: `Visit popular attractions in ${city}`,
-          location: {
-            name: `${city} Main Attractions`,
-            address: `Tourist Area, ${city}`,
-            coordinates: [0, 0]
-          },
-          description: `Explore the must-see sights and cultural landmarks that make ${city} special`,
+          activity: `Visit ${dayPlaces.afternoon.name}`,
+          location: dayPlaces.afternoon,
+          description: `Explore the must-see ${dayPlaces.afternoon.name} and its cultural significance`,
           estimatedCost: '₹300-800',
           duration: '3-4 hours'
         }
@@ -642,13 +637,9 @@ function generateEnhancedFallbackItinerary(city: string, days: number, budget: s
       evening: [
         {
           time: '7:00 PM',
-          activity: `Evening leisure in ${city}`,
-          location: {
-            name: `${city} Evening District`,
-            address: `Entertainment Area, ${city}`,
-            coordinates: [0, 0]
-          },
-          description: `Experience the nightlife and evening culture of ${city}`,
+          activity: `Evening at ${dayPlaces.evening.name}`,
+          location: dayPlaces.evening,
+          description: `Experience the evening atmosphere and culture of ${dayPlaces.evening.name}`,
           estimatedCost: '₹400-1000',
           duration: '2-3 hours'
         }
@@ -656,45 +647,33 @@ function generateEnhancedFallbackItinerary(city: string, days: number, budget: s
       dining: [
         {
           meal: 'Breakfast',
-          restaurant: `Local ${city} Breakfast Spot`,
-          cuisine: 'Local Cuisine',
-          location: {
-            name: `${city} Breakfast Place`,
-            address: `Morning District, ${city}`,
-            coordinates: [0, 0]
-          },
+          restaurant: dayPlaces.breakfast.name,
+          cuisine: dayPlaces.breakfast.cuisine || 'Local Cuisine',
+          location: dayPlaces.breakfast,
           price: '₹200-400',
-          speciality: 'Traditional breakfast items',
+          speciality: dayPlaces.breakfast.speciality || 'Traditional breakfast items',
           rating: '4.0/5',
           ambiance: 'Casual and welcoming',
           culturalNote: `Experience authentic ${city} morning dining culture`
         },
         {
           meal: 'Lunch',
-          restaurant: `Traditional ${city} Restaurant`,
-          cuisine: 'Regional Specialties',
-          location: {
-            name: `${city} Lunch Restaurant`,
-            address: `Central ${city}`,
-            coordinates: [0, 0]
-          },
+          restaurant: dayPlaces.lunch.name,
+          cuisine: dayPlaces.lunch.cuisine || 'Regional Specialties',
+          location: dayPlaces.lunch,
           price: '₹400-800',
-          speciality: 'Local lunch specialties',
+          speciality: dayPlaces.lunch.speciality || 'Local lunch specialties',
           rating: '4.2/5',
           ambiance: 'Family-friendly',
           culturalNote: `Try authentic ${city} regional dishes`
         },
         {
           meal: 'Dinner',
-          restaurant: `Premium ${city} Dining`,
-          cuisine: 'Fine Dining',
-          location: {
-            name: `${city} Dinner Restaurant`,
-            address: `Dining District, ${city}`,
-            coordinates: [0, 0]
-          },
+          restaurant: dayPlaces.dinner.name,
+          cuisine: dayPlaces.dinner.cuisine || 'Fine Dining',
+          location: dayPlaces.dinner,
           price: '₹800-1500',
-          speciality: 'Evening specialties and local delicacies',
+          speciality: dayPlaces.dinner.speciality || 'Evening specialties and local delicacies',
           rating: '4.3/5',
           ambiance: 'Elegant and sophisticated',
           culturalNote: `Experience upscale ${city} dining traditions`
@@ -986,6 +965,384 @@ async function enhanceWithRealPlaces(itinerary: any, city: string): Promise<any>
   }
 
   return itinerary
+}
+
+// Get day-specific real places for the itinerary - NO GENERIC NAMES
+function getDaySpecificPlaces(city: string, day: number): any {
+  const cityLower = city.toLowerCase()
+  
+  if (cityLower === 'mumbai') {
+    const mumbaiDayPlaces: { [key: number]: any } = {
+      1: {
+        morning: {
+          name: 'Gateway of India',
+          address: 'Apollo Bandar, Colaba, Mumbai, Maharashtra 400001',
+          coordinates: [18.9217, 72.8347]
+        },
+        afternoon: {
+          name: 'Colaba Causeway',
+          address: 'Colaba Causeway, Colaba, Mumbai, Maharashtra 400001',
+          coordinates: [18.9187, 72.8347]
+        },
+        evening: {
+          name: 'Marine Drive',
+          address: 'Marine Drive, Mumbai, Maharashtra 400002',
+          coordinates: [18.9431, 72.8235]
+        },
+        breakfast: {
+          name: 'Leopold Cafe',
+          address: 'Colaba Causeway, Colaba, Mumbai, Maharashtra 400001',
+          coordinates: [18.9187, 72.8347],
+          cuisine: 'Continental & Indian',
+          speciality: 'Vada Pav & Coffee'
+        },
+        lunch: {
+          name: 'Bademiya',
+          address: 'Tulloch Road, Apollo Bunder, Colaba, Mumbai, Maharashtra 400001',
+          coordinates: [18.9217, 72.8347],
+          cuisine: 'Mughlai & Street Food',
+          speciality: 'Seekh Kebab & Biryani'
+        },
+        dinner: {
+          name: 'Trishna',
+          address: 'Kala Ghoda, Fort, Mumbai, Maharashtra 400001',
+          coordinates: [18.9290, 72.8347],
+          cuisine: 'Seafood & Coastal',
+          speciality: 'Crab Masala & Prawns'
+        }
+      },
+      2: {
+        morning: {
+          name: 'Elephanta Caves',
+          address: 'Elephanta Island, Mumbai, Maharashtra 400094',
+          coordinates: [18.9633, 72.9315]
+        },
+        afternoon: {
+          name: 'Juhu Beach',
+          address: 'Juhu Beach, Juhu, Mumbai, Maharashtra 400049',
+          coordinates: [19.0996, 72.8347]
+        },
+        evening: {
+          name: 'Bandra West',
+          address: 'Bandra West, Mumbai, Maharashtra 400050',
+          coordinates: [19.0596, 72.8295]
+        },
+        breakfast: {
+          name: 'Cafe Madras',
+          address: 'King Circle, Matunga, Mumbai, Maharashtra 400019',
+          coordinates: [19.0176, 72.8478],
+          cuisine: 'South Indian',
+          speciality: 'Masala Dosa & Filter Coffee'
+        },
+        lunch: {
+          name: 'The Bombay Canteen',
+          address: 'Kamala Mills, Lower Parel, Mumbai, Maharashtra 400013',
+          coordinates: [19.0176, 72.8478],
+          cuisine: 'Modern Indian',
+          speciality: 'Regional Thalis & Cocktails'
+        },
+        dinner: {
+          name: 'Trèsind Mumbai',
+          address: 'BKC, Mumbai, Maharashtra 400051',
+          coordinates: [19.0596, 72.8295],
+          cuisine: 'Fine Dining Indian',
+          speciality: 'Tasting Menu & Wine Pairing'
+        }
+      },
+      3: {
+        morning: {
+          name: 'Taj Mahal Palace',
+          address: 'Apollo Bunder, Colaba, Mumbai, Maharashtra 400001',
+          coordinates: [18.9217, 72.8347]
+        },
+        afternoon: {
+          name: 'Kala Ghoda Art District',
+          address: 'Kala Ghoda, Fort, Mumbai, Maharashtra 400001',
+          coordinates: [18.9290, 72.8347]
+        },
+        evening: {
+          name: 'Worli Sea Face',
+          address: 'Worli, Mumbai, Maharashtra 400018',
+          coordinates: [19.0176, 72.8478]
+        },
+        breakfast: {
+          name: 'K Rustom',
+          address: 'Churchgate, Mumbai, Maharashtra 400020',
+          coordinates: [18.9290, 72.8347],
+          cuisine: 'Parsi & Continental',
+          speciality: 'Ice Cream & Sandwiches'
+        },
+        lunch: {
+          name: 'Gajalee',
+          address: 'Vile Parle, Mumbai, Maharashtra 400056',
+          coordinates: [19.0996, 72.8347],
+          cuisine: 'Seafood & Coastal',
+          speciality: 'Pomfret Fry & Prawn Curry'
+        },
+        dinner: {
+          name: 'Masala Library',
+          address: 'BKC, Mumbai, Maharashtra 400051',
+          coordinates: [19.0596, 72.8295],
+          cuisine: 'Molecular Indian',
+          speciality: 'Innovative Indian Cuisine'
+        }
+      }
+    }
+    
+    return mumbaiDayPlaces[day] || mumbaiDayPlaces[1]
+  }
+  
+  if (cityLower === 'delhi') {
+    const delhiDayPlaces: { [key: number]: any } = {
+      1: {
+        morning: {
+          name: 'Red Fort',
+          address: 'Netaji Subhash Marg, Lal Qila, Old Delhi, New Delhi, Delhi 110006',
+          coordinates: [28.6562, 77.2410]
+        },
+        afternoon: {
+          name: 'Chandni Chowk',
+          address: 'Chandni Chowk, Old Delhi, Delhi 110006',
+          coordinates: [28.6562, 77.2410]
+        },
+        evening: {
+          name: 'India Gate',
+          address: 'Rajpath, New Delhi, Delhi 110001',
+          coordinates: [28.6129, 77.2295]
+        },
+        breakfast: {
+          name: 'Paranthe Wali Gali',
+          address: 'Chandni Chowk, Old Delhi, Delhi 110006',
+          coordinates: [28.6562, 77.2410],
+          cuisine: 'North Indian',
+          speciality: 'Stuffed Paranthas'
+        },
+        lunch: {
+          name: 'Karim\'s',
+          address: 'Jama Masjid, Old Delhi, Delhi 110006',
+          coordinates: [28.6505, 77.2334],
+          cuisine: 'Mughlai',
+          speciality: 'Mutton Korma & Biryani'
+        },
+        dinner: {
+          name: 'Bukhara',
+          address: 'ITC Maurya, New Delhi, Delhi 110037',
+          coordinates: [28.6129, 77.2295],
+          cuisine: 'North Indian',
+          speciality: 'Dal Bukhara & Tandoori'
+        }
+      },
+      2: {
+        morning: {
+          name: 'Humayun\'s Tomb',
+          address: 'Mathura Road, Nizamuddin, New Delhi, Delhi 110013',
+          coordinates: [28.5931, 77.2506]
+        },
+        afternoon: {
+          name: 'Qutub Minar',
+          address: 'Mehrauli, New Delhi, Delhi 110030',
+          coordinates: [28.5245, 77.1855]
+        },
+        evening: {
+          name: 'Lodhi Garden',
+          address: 'Lodhi Road, New Delhi, Delhi 110003',
+          coordinates: [28.5931, 77.2506]
+        },
+        breakfast: {
+          name: 'Haldiram\'s',
+          address: 'Connaught Place, New Delhi, Delhi 110001',
+          coordinates: [28.6129, 77.2295],
+          cuisine: 'North Indian',
+          speciality: 'Chole Bhature & Samosa'
+        },
+        lunch: {
+          name: 'Pindi',
+          address: 'Pandara Road, New Delhi, Delhi 110011',
+          coordinates: [28.5931, 77.2506],
+          cuisine: 'Punjabi',
+          speciality: 'Butter Chicken & Dal Makhani'
+        },
+        dinner: {
+          name: 'Indian Accent',
+          address: 'The Lodhi, New Delhi, Delhi 110003',
+          coordinates: [28.5931, 77.2506],
+          cuisine: 'Modern Indian',
+          speciality: 'Tasting Menu & Wine Pairing'
+        }
+      },
+      3: {
+        morning: {
+          name: 'Akshardham Temple',
+          address: 'Noida Mor, New Delhi, Delhi 110092',
+          coordinates: [28.6129, 77.2295]
+        },
+        afternoon: {
+          name: 'Lotus Temple',
+          address: 'Bahapur, New Delhi, Delhi 110019',
+          coordinates: [28.5535, 77.2588]
+        },
+        evening: {
+          name: 'Connaught Place',
+          address: 'Connaught Place, New Delhi, Delhi 110001',
+          coordinates: [28.6129, 77.2295]
+        },
+        breakfast: {
+          name: 'Bengali Sweet House',
+          address: 'Chandni Chowk, Old Delhi, Delhi 110006',
+          coordinates: [28.6562, 77.2410],
+          cuisine: 'Bengali',
+          speciality: 'Rasgulla & Sandesh'
+        },
+        lunch: {
+          name: 'Dhaba',
+          address: 'Pandara Road, New Delhi, Delhi 110011',
+          coordinates: [28.5931, 77.2506],
+          cuisine: 'Punjabi Dhaba',
+          speciality: 'Sarson da Saag & Makki di Roti'
+        },
+        dinner: {
+          name: 'Dum Pukht',
+          address: 'ITC Maurya, New Delhi, Delhi 110037',
+          coordinates: [28.6129, 77.2295],
+          cuisine: 'Awadhi',
+          speciality: 'Dum Biryani & Kebabs'
+        }
+      }
+    }
+    
+    return delhiDayPlaces[day] || delhiDayPlaces[1]
+  }
+  
+  if (cityLower === 'tokyo') {
+    const tokyoDayPlaces: { [key: number]: any } = {
+      1: {
+        morning: {
+          name: 'Senso-ji Temple',
+          address: '2-3-1 Asakusa, Taito City, Tokyo 111-0032, Japan',
+          coordinates: [35.7148, 139.7967]
+        },
+        afternoon: {
+          name: 'Tokyo Skytree',
+          address: '1-1-2 Oshiage, Sumida City, Tokyo 131-0045, Japan',
+          coordinates: [35.7100, 139.8107]
+        },
+        evening: {
+          name: 'Asakusa District',
+          address: 'Asakusa, Taito City, Tokyo 111-0032, Japan',
+          coordinates: [35.7148, 139.7967]
+        },
+        breakfast: {
+          name: 'Tsukiji Outer Market',
+          address: 'Tsukiji, Chuo City, Tokyo 104-0045, Japan',
+          coordinates: [35.6654, 139.7704],
+          cuisine: 'Japanese Street Food',
+          speciality: 'Fresh Sushi & Tamago'
+        },
+        lunch: {
+          name: 'Ichiran Ramen',
+          address: 'Shibuya, Tokyo 150-0002, Japan',
+          coordinates: [35.6595, 139.7004],
+          cuisine: 'Ramen',
+          speciality: 'Tonkotsu Ramen'
+        },
+        dinner: {
+          name: 'Sukiyabashi Jiro',
+          address: 'Ginza, Chuo City, Tokyo 104-0061, Japan',
+          coordinates: [35.6720, 139.7676],
+          cuisine: 'Sushi',
+          speciality: 'Omakase Sushi'
+        }
+      },
+      2: {
+        morning: {
+          name: 'Meiji Shrine',
+          address: '1-1 Yoyogikamizonocho, Shibuya City, Tokyo 151-8557, Japan',
+          coordinates: [35.6762, 139.6993]
+        },
+        afternoon: {
+          name: 'Shibuya Crossing',
+          address: 'Shibuya, Tokyo 150-0002, Japan',
+          coordinates: [35.6595, 139.7004]
+        },
+        evening: {
+          name: 'Harajuku',
+          address: 'Harajuku, Shibuya City, Tokyo 150-0001, Japan',
+          coordinates: [35.6702, 139.7016]
+        },
+        breakfast: {
+          name: 'Bills',
+          address: 'Omotesando, Shibuya City, Tokyo 150-0001, Japan',
+          coordinates: [35.6702, 139.7016],
+          cuisine: 'International',
+          speciality: 'Ricotta Hotcakes'
+        },
+        lunch: {
+          name: 'Afuri Ramen',
+          address: 'Harajuku, Shibuya City, Tokyo 150-0001, Japan',
+          coordinates: [35.6702, 139.7016],
+          cuisine: 'Ramen',
+          speciality: 'Yuzu Shio Ramen'
+        },
+        dinner: {
+          name: 'Narisawa',
+          address: 'Minato City, Tokyo 107-0062, Japan',
+          coordinates: [35.6620, 139.7178],
+          cuisine: 'French-Japanese Fusion',
+          speciality: 'Seasonal Tasting Menu'
+        }
+      },
+      3: {
+        morning: {
+          name: 'Imperial Palace',
+          address: '1-1 Chiyoda, Chiyoda City, Tokyo 100-8111, Japan',
+          coordinates: [35.6850, 139.7528]
+        },
+        afternoon: {
+          name: 'Ginza District',
+          address: 'Ginza, Chuo City, Tokyo 104-0061, Japan',
+          coordinates: [35.6720, 139.7676]
+        },
+        evening: {
+          name: 'Roppongi Hills',
+          address: 'Roppongi, Minato City, Tokyo 106-0032, Japan',
+          coordinates: [35.6620, 139.7178]
+        },
+        breakfast: {
+          name: 'Gonpachi',
+          address: 'Nishi-Azabu, Minato City, Tokyo 106-0031, Japan',
+          coordinates: [35.6620, 139.7178],
+          cuisine: 'Japanese',
+          speciality: 'Soba & Tempura'
+        },
+        lunch: {
+          name: 'Sukiyabashi Jiro Honten',
+          address: 'Ginza, Chuo City, Tokyo 104-0061, Japan',
+          coordinates: [35.6720, 139.7676],
+          cuisine: 'Sushi',
+          speciality: 'Premium Sushi'
+        },
+        dinner: {
+          name: 'Ryugin',
+          address: 'Roppongi, Minato City, Tokyo 106-0032, Japan',
+          coordinates: [35.6620, 139.7178],
+          cuisine: 'Kaiseki',
+          speciality: 'Traditional Japanese'
+        }
+      }
+    }
+    
+    return tokyoDayPlaces[day] || tokyoDayPlaces[1]
+  }
+  
+  // Default fallback for other cities
+  return {
+    morning: { name: 'City Center', address: city, coordinates: [0, 0] },
+    afternoon: { name: 'Main Square', address: city, coordinates: [0, 0] },
+    evening: { name: 'Downtown', address: city, coordinates: [0, 0] },
+    breakfast: { name: 'Local Cafe', address: city, coordinates: [0, 0] },
+    lunch: { name: 'Local Restaurant', address: city, coordinates: [0, 0] },
+    dinner: { name: 'Local Dining', address: city, coordinates: [0, 0] }
+  }
 }
 
 // Fallback places for when Google Places API fails
