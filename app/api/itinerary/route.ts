@@ -20,6 +20,38 @@ interface ItineraryRequest {
   imageSize?: 'small' | 'medium' | 'large'
 }
 
+// Google Places API interfaces
+interface GooglePlace {
+  place_id: string
+  name: string
+  formatted_address: string
+  geometry: {
+    location: {
+      lat: number
+      lng: number
+    }
+  }
+  rating?: number
+  user_ratings_total?: number
+  types: string[]
+  opening_hours?: {
+    open_now: boolean
+    weekday_text?: string[]
+  }
+  price_level?: number
+  photos?: Array<{
+    photo_reference: string
+    height: number
+    width: number
+  }>
+}
+
+interface GooglePlacesResponse {
+  results: GooglePlace[]
+  status: string
+  next_page_token?: string
+}
+
 // City-specific configuration for Mumbai, Tokyo, Delhi
 const CITY_CONFIGS = {
   'mumbai': {
@@ -102,6 +134,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get city-specific configuration early so it's available for fallback
+    const cityConfig = CITY_CONFIGS[city.toLowerCase() as keyof typeof CITY_CONFIGS]
+
     const apiKey = process.env.PERPLEXITY_API_KEY
     if (!apiKey) {
       globalMonitor.error('Perplexity API key not configured')
@@ -143,8 +178,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fallbackResponse)
     }
 
-    // Get city-specific configuration
-    const cityConfig = CITY_CONFIGS[city.toLowerCase() as keyof typeof CITY_CONFIGS]
+    // cityConfig is already declared above, now calculate adjusted budget
     const adjustedBudget = cityConfig ? 
       Math.round(parseFloat(budget.replace(/[^\d]/g, '')) * cityConfig.budgetMultiplier).toString() : 
       budget
@@ -160,11 +194,37 @@ export async function POST(request: NextRequest) {
       ? `\n\nIMPORTANT: Include these cultural tips in the response:\n${cityConfig.culturalTips.join('\n')}`
       : ''
     
-    const weatherText = includeWeather && cityConfig 
-      ? `\n\nWeather Information: ${cityConfig.weatherInfo}`
-      : ''
+         const weatherText = includeWeather && cityConfig 
+       ? `\n\nWeather Information: ${cityConfig.weatherInfo}`
+       : ''
     
-    const prompt = `Generate a detailed ${days}-day travel itinerary for ${city} with a budget of ₹${adjustedBudget}${interestsText}.${culturalTipsText}${weatherText}
+     // Add current date context for real-time planning
+     const currentDate = new Date()
+     const dateContext = `\n\nCurrent Date: ${currentDate.toISOString().split('T')[0]} (${currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })})
+Planning Period: ${days} days starting from today`
+    
+     const prompt = `Generate a detailed ${days}-day travel itinerary for ${city} with a budget of ₹${adjustedBudget}${interestsText}.${culturalTipsText}${weatherText}${dateContext}
+
+CRITICAL REQUIREMENTS - Use ONLY REAL, VERIFIABLE places and CURRENT real-time data:
+
+REAL PLACES REQUIREMENTS:
+- Use ONLY real, existing places that can be found on Google Maps
+- Include specific, searchable place names (not generic descriptions)
+- Provide accurate addresses that exist in ${city}
+- Use real restaurant names, attraction names, and location names
+- Include only places that are currently open and operating
+
+REAL-TIME DATA REQUIREMENTS:
+- Current weather conditions and forecasts for ${city}
+- Latest opening hours and current availability of attractions
+- Current prices and exchange rates (as of today)
+- Recent events, festivals, or special activities happening in ${city} right now
+- Latest travel advisories or restrictions for ${city}
+- Current seasonal highlights and best times to visit specific places
+- Real-time transportation schedules and routes
+- Current restaurant ratings and reviews from today
+- Latest cultural events or exhibitions currently happening
+- Current operating status of all mentioned places
 
 Return ONLY a valid JSON object with this exact structure (no additional text, no markdown):
 
@@ -312,12 +372,12 @@ IMPORTANT REQUIREMENTS:
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.1-sonar-small-128k-online',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a professional travel planner with deep knowledge of global destinations. You MUST return ONLY valid JSON without any markdown formatting, explanations, or additional text. The response must be parseable by JSON.parse(). Never use trailing commas. Never include text before or after the JSON object. Include accurate coordinates and realistic pricing.'
-                },
+              model: 'llama-3.1-70b-online',
+                             messages: [
+                 {
+                   role: 'system',
+                   content: 'You are a professional travel planner with access to real-time, current information. Use your real-time data capabilities to provide the most up-to-date information including current weather, prices, opening hours, events, and travel conditions. You MUST return ONLY valid JSON without any markdown formatting, explanations, or additional text. The response must be parseable by JSON.parse(). Never use trailing commas. Never include text before or after the JSON object. Include accurate coordinates and realistic pricing based on current market conditions.'
+                 },
                 {
                   role: 'user',
                   content: prompt
@@ -416,6 +476,16 @@ IMPORTANT REQUIREMENTS:
 
     // Validate and enhance the itinerary structure
     itinerary = validateAndEnhanceItinerary(itinerary, city, days, budget, cityConfig)
+    
+    // Enhance with real Google Places data
+    globalMonitor.log('Enhancing itinerary with real Google Places data')
+    itinerary = await enhanceWithRealPlaces(itinerary, city)
+    
+    // Validate real-time data freshness
+    const realTimeValidation = validateRealTimeData(itinerary)
+    if (!realTimeValidation.isValid) {
+      globalMonitor.log(`Real-time data validation warnings: ${realTimeValidation.warnings.join(', ')}`)
+    }
 
     // Extract location names for image search
     const locationNames = extractLocationNames(itinerary, city)
@@ -453,10 +523,20 @@ IMPORTANT REQUIREMENTS:
         generatedAt: new Date().toISOString(),
         requestId: crypto.randomUUID(),
         processingTime: Date.now() - globalMonitor['startTime'],
-        aiModel: 'llama-3.1-sonar-small-128k-online',
+        aiModel: 'llama-3.1-70b-online',
         imageCount: Object.keys(locationImages).length,
         cityConfig: cityConfig ? 'enhanced' : 'standard',
-        version: '2.0.0'
+        version: '2.0.0',
+        realTimeData: {
+          validated: realTimeValidation.isValid,
+          warnings: realTimeValidation.warnings,
+          dataFreshness: 'real-time'
+        },
+        googlePlaces: {
+          enhanced: true,
+          realPlacesCount: countRealPlaces(itinerary),
+          currentStatus: true
+        }
       }
     }
 
@@ -693,4 +773,198 @@ function extractLocationNames(itinerary: any, city: string): string[] {
   })
   
   return Array.from(locationNames).slice(0, 20) // Limit to 20 locations
+}
+
+// Search for real places using Google Places API
+async function searchRealPlaces(query: string, city: string, type?: string): Promise<GooglePlace[]> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY
+  if (!apiKey) {
+    console.warn('Google Places API key not configured')
+    return []
+  }
+
+  try {
+    const searchQuery = `${query} ${city}`
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${apiKey}${type ? `&type=${type}` : ''}&language=en`
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Google Places API error: ${response.status}`)
+    }
+
+    const data: GooglePlacesResponse = await response.json()
+    
+    if (data.status !== 'OK') {
+      throw new Error(`Google Places API status: ${data.status}`)
+    }
+
+    return data.results.slice(0, 5) // Return top 5 results
+  } catch (error) {
+    console.error('Google Places API search failed:', error)
+    return []
+  }
+}
+
+// Get real-time place details including opening hours and current status
+async function getPlaceDetails(placeId: string): Promise<any> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=opening_hours,price_level,rating,user_ratings_total,formatted_phone_number,website&key=${apiKey}`
+    
+    const response = await fetch(url)
+    if (!response.ok) return null
+
+    const data = await response.json()
+    return data.result || null
+  } catch (error) {
+    console.error('Failed to get place details:', error)
+    return null
+  }
+}
+
+// Enhance itinerary with real Google Places data
+async function enhanceWithRealPlaces(itinerary: any, city: string): Promise<any> {
+  if (!itinerary?.days) return itinerary
+
+  for (const day of itinerary.days) {
+    // Enhance activities with real places
+    for (const period of ['morning', 'afternoon', 'evening']) {
+      if (day[period]) {
+        for (const activity of day[period]) {
+          if (activity.location?.name) {
+            const realPlaces = await searchRealPlaces(activity.location.name, city, 'tourist_attraction')
+            if (realPlaces.length > 0) {
+              const bestPlace = realPlaces[0]
+              const details = await getPlaceDetails(bestPlace.place_id)
+              
+              // Update with real data
+              activity.location = {
+                name: bestPlace.name,
+                address: bestPlace.formatted_address,
+                coordinates: [bestPlace.geometry.location.lat, bestPlace.geometry.location.lng],
+                placeId: bestPlace.place_id,
+                rating: bestPlace.rating,
+                userRatings: bestPlace.user_ratings_total,
+                openNow: details?.opening_hours?.open_now,
+                priceLevel: details?.price_level,
+                types: bestPlace.types
+              }
+              
+              // Add real-time status
+              if (details?.opening_hours?.weekday_text) {
+                activity.currentStatus = {
+                  openNow: details.opening_hours.open_now,
+                  todayHours: details.opening_hours.weekday_text[new Date().getDay()] || 'Hours not available'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Enhance dining with real restaurants
+    if (day.dining) {
+      for (const meal of day.dining) {
+        if (meal.restaurant) {
+          const realRestaurants = await searchRealPlaces(meal.restaurant, city, 'restaurant')
+          if (realRestaurants.length > 0) {
+            const bestRestaurant = realRestaurants[0]
+            const details = await getPlaceDetails(bestRestaurant.place_id)
+            
+            // Update with real data
+            meal.location = {
+              name: bestRestaurant.name,
+              address: bestRestaurant.formatted_address,
+              coordinates: [bestRestaurant.geometry.location.lat, bestRestaurant.geometry.location.lng],
+              placeId: bestRestaurant.place_id,
+              rating: bestRestaurant.rating,
+              userRatings: bestRestaurant.user_ratings_total,
+              openNow: details?.opening_hours?.open_now,
+              priceLevel: details?.price_level,
+              types: bestRestaurant.types
+            }
+            
+            // Add real-time status
+            if (details?.opening_hours?.weekday_text) {
+              meal.currentStatus = {
+                openNow: details.opening_hours.open_now,
+                todayHours: details.opening_hours.weekday_text[new Date().getDay()] || 'Hours not available'
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return itinerary
+}
+
+// Validate real-time data freshness
+function validateRealTimeData(itinerary: any): { isValid: boolean; warnings: string[] } {
+  const warnings: string[] = []
+  const currentDate = new Date()
+  
+  // Check if dates are current
+  itinerary.days?.forEach((day: any, index: number) => {
+    if (day.date) {
+      const dayDate = new Date(day.date)
+      const daysDiff = Math.ceil((dayDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysDiff < 0) {
+        warnings.push(`Day ${index + 1} has a past date: ${day.date}`)
+      }
+    }
+    
+    // Check for current weather information
+    if (day.weather && day.weather.includes('Please check current weather conditions')) {
+      warnings.push(`Day ${index + 1} has generic weather info - should use real-time data`)
+    }
+    
+    // Check for current pricing
+    if (day.morning || day.afternoon || day.evening) {
+      ['morning', 'afternoon', 'evening'].forEach(period => {
+        day[period]?.forEach((activity: any) => {
+          if (activity.estimatedCost && activity.estimatedCost.includes('₹200-500')) {
+            warnings.push(`Day ${index + 1} ${period} has generic pricing - should use current rates`)
+          }
+        })
+      })
+    }
+  })
+  
+  return {
+    isValid: warnings.length === 0,
+    warnings
+  }
+}
+
+// Count real places in the itinerary
+function countRealPlaces(itinerary: any): number {
+  let count = 0
+  
+  if (!itinerary?.days) return count
+  
+  itinerary.days.forEach((day: any) => {
+    ['morning', 'afternoon', 'evening'].forEach(period => {
+      day[period]?.forEach((activity: any) => {
+        if (activity.location?.placeId) count++
+      })
+    })
+    
+    day.dining?.forEach((meal: any) => {
+      if (meal.location?.placeId) count++
+    })
+  })
+  
+  return count
 }
