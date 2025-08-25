@@ -50,6 +50,7 @@ interface GooglePlacesResponse {
   results: GooglePlace[]
   status: string
   next_page_token?: string
+  error_message?: string
 }
 
 // City-specific configuration for Mumbai, Tokyo, Delhi
@@ -213,6 +214,14 @@ REAL PLACES REQUIREMENTS:
 - Provide accurate addresses that exist in ${city}
 - Use real restaurant names, attraction names, and location names
 - Include only places that are currently open and operating
+
+SPECIFIC PLACE NAMING RULES:
+- NEVER use generic terms like "Main Attractions", "Tourist Spot", "City Center", "Popular Place"
+- ALWAYS use specific, real names like "Gateway of India", "Marine Drive", "Colaba Causeway"
+- For restaurants, use actual names like "Leopold Cafe", "Bademiya", "Trishna"
+- For attractions, use real names like "Taj Mahal Palace", "Elephanta Caves", "Juhu Beach"
+- For areas, use specific names like "Colaba", "Bandra West", "Andheri East"
+- Each location name must be a real, searchable place on Google Maps
 
 REAL-TIME DATA REQUIREMENTS:
 - Current weather conditions and forecasts for ${city}
@@ -784,7 +793,32 @@ async function searchRealPlaces(query: string, city: string, type?: string): Pro
   }
 
   try {
-    const searchQuery = `${query} ${city}`
+    // Clean and improve the search query
+    let searchQuery = query.trim()
+    
+    // Remove generic terms that won't help with search
+    const genericTerms = ['main attractions', 'main attraction', 'attractions', 'attraction', 'place', 'spot', 'area', 'location']
+    genericTerms.forEach(term => {
+      searchQuery = searchQuery.replace(new RegExp(term, 'gi'), '').trim()
+    })
+    
+    // If query is too generic, try to make it more specific
+    if (searchQuery.length < 3 || genericTerms.some(term => searchQuery.toLowerCase().includes(term))) {
+      // Try with city + type instead
+      if (type === 'tourist_attraction') {
+        searchQuery = `${city} tourist attractions`
+      } else if (type === 'restaurant') {
+        searchQuery = `${city} restaurants`
+      } else {
+        searchQuery = city
+      }
+    } else {
+      // Add city to the query
+      searchQuery = `${searchQuery} ${city}`
+    }
+    
+    console.log(`Searching Google Places for: "${searchQuery}" (type: ${type || 'any'})`)
+    
     const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${apiKey}${type ? `&type=${type}` : ''}&language=en`
     
     const response = await fetch(url, {
@@ -801,9 +835,30 @@ async function searchRealPlaces(query: string, city: string, type?: string): Pro
     const data: GooglePlacesResponse = await response.json()
     
     if (data.status !== 'OK') {
+      console.log(`Google Places search result: ${data.status} - ${data.error_message || 'No error message'}`)
+      if (data.status === 'ZERO_RESULTS') {
+        // Try a broader search without type restriction
+        if (type) {
+          console.log(`Retrying without type restriction for: "${searchQuery}"`)
+          const broaderUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${apiKey}&language=en`
+          const broaderResponse = await fetch(broaderUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          })
+          
+          if (broaderResponse.ok) {
+            const broaderData: GooglePlacesResponse = await broaderResponse.json()
+            if (broaderData.status === 'OK') {
+              console.log(`Broader search found ${broaderData.results.length} results`)
+              return broaderData.results.slice(0, 5)
+            }
+          }
+        }
+      }
       throw new Error(`Google Places API status: ${data.status}`)
     }
 
+    console.log(`Found ${data.results.length} places for: "${searchQuery}"`)
     return data.results.slice(0, 5) // Return top 5 results
   } catch (error) {
     console.error('Google Places API search failed:', error)
@@ -865,6 +920,18 @@ async function enhanceWithRealPlaces(itinerary: any, city: string): Promise<any>
                   todayHours: details.opening_hours.weekday_text[new Date().getDay()] || 'Hours not available'
                 }
               }
+            } else {
+              // Fallback: Use known popular places for the city
+              const fallbackPlace = getFallbackPlace(activity.location.name, city)
+              if (fallbackPlace) {
+                activity.location = {
+                  ...activity.location,
+                  name: fallbackPlace.name,
+                  address: fallbackPlace.address,
+                  coordinates: fallbackPlace.coordinates,
+                  fallback: true
+                }
+              }
             }
           }
         }
@@ -900,6 +967,18 @@ async function enhanceWithRealPlaces(itinerary: any, city: string): Promise<any>
                 todayHours: details.opening_hours.weekday_text[new Date().getDay()] || 'Hours not available'
               }
             }
+          } else {
+            // Fallback: Use known popular restaurants for the city
+            const fallbackRestaurant = getFallbackRestaurant(meal.restaurant, city)
+            if (fallbackRestaurant) {
+              meal.location = {
+                ...meal.location,
+                name: fallbackRestaurant.name,
+                address: fallbackRestaurant.address,
+                coordinates: fallbackRestaurant.coordinates,
+                fallback: true
+              }
+            }
           }
         }
       }
@@ -907,6 +986,154 @@ async function enhanceWithRealPlaces(itinerary: any, city: string): Promise<any>
   }
 
   return itinerary
+}
+
+// Fallback places for when Google Places API fails
+function getFallbackPlace(originalName: string, city: string): any {
+  const cityLower = city.toLowerCase()
+  
+  if (cityLower === 'mumbai') {
+    const mumbaiPlaces = {
+      'gateway of india': {
+        name: 'Gateway of India',
+        address: 'Apollo Bandar, Colaba, Mumbai, Maharashtra 400001',
+        coordinates: [18.9217, 72.8347]
+      },
+      'marine drive': {
+        name: 'Marine Drive',
+        address: 'Marine Drive, Mumbai, Maharashtra 400002',
+        coordinates: [18.9431, 72.8235]
+      },
+      'colaba causeway': {
+        name: 'Colaba Causeway',
+        address: 'Colaba Causeway, Colaba, Mumbai, Maharashtra 400001',
+        coordinates: [18.9187, 72.8347]
+      },
+      'juhu beach': {
+        name: 'Juhu Beach',
+        address: 'Juhu Beach, Juhu, Mumbai, Maharashtra 400049',
+        coordinates: [19.0996, 72.8347]
+      },
+      'elephanta caves': {
+        name: 'Elephanta Caves',
+        address: 'Elephanta Island, Mumbai, Maharashtra 400094',
+        coordinates: [18.9633, 72.9315]
+      },
+      'taj mahal palace': {
+        name: 'Taj Mahal Palace',
+        address: 'Apollo Bunder, Colaba, Mumbai, Maharashtra 400001',
+        coordinates: [18.9217, 72.8347]
+      }
+    }
+    
+    // Try to find a match
+    for (const [key, place] of Object.entries(mumbaiPlaces)) {
+      if (originalName.toLowerCase().includes(key) || key.includes(originalName.toLowerCase())) {
+        return place
+      }
+    }
+    
+    // Return a default popular place
+    return mumbaiPlaces['gateway of india']
+  }
+  
+  if (cityLower === 'delhi') {
+    const delhiPlaces = {
+      'red fort': {
+        name: 'Red Fort',
+        address: 'Netaji Subhash Marg, Lal Qila, Old Delhi, New Delhi, Delhi 110006',
+        coordinates: [28.6562, 77.2410]
+      },
+      'india gate': {
+        name: 'India Gate',
+        address: 'Rajpath, New Delhi, Delhi 110001',
+        coordinates: [28.6129, 77.2295]
+      },
+      'humayun tomb': {
+        name: 'Humayun\'s Tomb',
+        address: 'Mathura Road, Nizamuddin, New Delhi, Delhi 110013',
+        coordinates: [28.5931, 77.2506]
+      },
+      'qutub minar': {
+        name: 'Qutub Minar',
+        address: 'Mehrauli, New Delhi, Delhi 110030',
+        coordinates: [28.5245, 77.1855]
+      }
+    }
+    
+    for (const [key, place] of Object.entries(delhiPlaces)) {
+      if (originalName.toLowerCase().includes(key) || key.includes(originalName.toLowerCase())) {
+        return place
+      }
+    }
+    
+    return delhiPlaces['red fort']
+  }
+  
+  if (cityLower === 'tokyo') {
+    const tokyoPlaces = {
+      'senso ji': {
+        name: 'Senso-ji Temple',
+        address: '2-3-1 Asakusa, Taito City, Tokyo 111-0032, Japan',
+        coordinates: [35.7148, 139.7967]
+      },
+      'tokyo skytree': {
+        name: 'Tokyo Skytree',
+        address: '1-1-2 Oshiage, Sumida City, Tokyo 131-0045, Japan',
+        coordinates: [35.7100, 139.8107]
+      },
+      'shibuya crossing': {
+        name: 'Shibuya Crossing',
+        address: 'Shibuya, Tokyo 150-0002, Japan',
+        coordinates: [35.6595, 139.7004]
+      }
+    }
+    
+    for (const [key, place] of Object.entries(tokyoPlaces)) {
+      if (originalName.toLowerCase().includes(key) || key.includes(originalName.toLowerCase())) {
+        return place
+      }
+    }
+    
+    return tokyoPlaces['senso ji']
+  }
+  
+  return null
+}
+
+// Fallback restaurants for when Google Places API fails
+function getFallbackRestaurant(originalName: string, city: string): any {
+  const cityLower = city.toLowerCase()
+  
+  if (cityLower === 'mumbai') {
+    const mumbaiRestaurants = {
+      'leopold cafe': {
+        name: 'Leopold Cafe',
+        address: 'Colaba Causeway, Colaba, Mumbai, Maharashtra 400001',
+        coordinates: [18.9187, 72.8347]
+      },
+      'bademiya': {
+        name: 'Bademiya',
+        address: 'Tulloch Road, Apollo Bunder, Colaba, Mumbai, Maharashtra 400001',
+        coordinates: [18.9217, 72.8347]
+      },
+      'trishna': {
+        name: 'Trishna',
+        address: 'Kala Ghoda, Fort, Mumbai, Maharashtra 400001',
+        coordinates: [18.9290, 72.8347]
+      }
+    }
+    
+    for (const [key, restaurant] of Object.entries(mumbaiRestaurants)) {
+      if (originalName.toLowerCase().includes(key) || key.includes(originalName.toLowerCase())) {
+        return restaurant
+      }
+    }
+    
+    return mumbaiRestaurants['leopold cafe']
+  }
+  
+  return null
 }
 
 // Validate real-time data freshness
