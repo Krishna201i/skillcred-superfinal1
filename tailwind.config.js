@@ -17,6 +17,12 @@ module.exports = {
       },
       backdropBlur: {
         xs: '2px',
+      },
+      // Override default colors to ensure visibility
+      textColor: {
+        'primary': '#111827',
+        'secondary': '#374151',
+        'muted': '#6b7280',
       }
     },
   },
