@@ -404,10 +404,11 @@ export default function Home() {
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
-                    <button 
-                      onClick={nextStep} 
+                    <button
+                      onClick={nextStep}
                       disabled={!formData.city}
-                      className="btn-primary inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-primary inline-flex items-center space-x-2 disabled:cursor-not-allowed"
+                      style={!formData.city ? {opacity: 0.6} : {}}
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
@@ -514,10 +515,11 @@ export default function Home() {
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
-                    <button 
+                    <button
                       onClick={nextStep}
                       disabled={!formData.budget}
-                      className="btn-primary inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-primary inline-flex items-center space-x-2 disabled:cursor-not-allowed"
+                      style={!formData.budget ? {opacity: 0.6} : {}}
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
@@ -670,8 +672,8 @@ export default function Home() {
                       />
                       <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                         <div className="text-center text-white">
-                          <h3 className="text-4xl font-bold mb-2">{formData.city}</h3>
-                          <p className="text-xl opacity-90">Your {formData.days}-day adventure awaits</p>
+                          <h3 className="text-4xl font-bold mb-2" style={{color: '#ffffff'}}>{formData.city}</h3>
+                          <p className="text-xl" style={{color: '#ffffff', opacity: 0.95}}>Your {formData.days}-day adventure awaits</p>
                         </div>
                       </div>
                     </div>
