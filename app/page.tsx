@@ -182,12 +182,30 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        const errorData = await response.text()
-        console.error('API Error:', response.status, errorData)
-        throw new Error(`API Error: ${response.status}`)
+        let errorMessage = `HTTP ${response.status}`
+        try {
+          const errorData = await response.text()
+          console.error('API Error:', response.status, errorData)
+          // Try to parse error message from response
+          try {
+            const errorObj = JSON.parse(errorData)
+            errorMessage = errorObj.error || errorMessage
+          } catch {
+            errorMessage = errorData.substring(0, 100) || errorMessage
+          }
+        } catch (e) {
+          console.error('Failed to read error response:', e)
+        }
+        throw new Error(errorMessage)
       }
 
-      const data = await response.json()
+      let data: any
+      try {
+        data = await response.json()
+      } catch (e) {
+        console.error('Failed to parse response JSON:', e)
+        throw new Error('Invalid response from server')
+      }
       setItinerary(data)
       setCurrentStep(STEPS.RESULTS)
     } catch (err) {
