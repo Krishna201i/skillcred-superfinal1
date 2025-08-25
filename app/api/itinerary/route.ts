@@ -105,14 +105,42 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.PERPLEXITY_API_KEY
     if (!apiKey) {
       globalMonitor.error('Perplexity API key not configured')
-      return NextResponse.json(
-        { 
-          error: 'AI service configuration error',
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID()
-        },
-        { status: 500 }
-      )
+      globalMonitor.log('Falling back to enhanced fallback itinerary')
+
+      // Generate enhanced fallback instead of returning error
+      const fallbackItinerary = generateEnhancedFallbackItinerary(city, days, budget, cityConfig)
+
+      // Still try to get images
+      const locationNames = extractLocationNames(fallbackItinerary, city)
+      let locationImages: { [key: string]: any } = {}
+
+      try {
+        locationImages = await fetchDiverseLocationImages(locationNames, imageSize)
+      } catch (imageError) {
+        globalMonitor.log('Image fetch failed, using fallback city image')
+        const fallbackImage = getFallbackCityImage(city)
+        if (fallbackImage) {
+          locationImages[city] = fallbackImage
+        }
+      }
+
+      const fallbackResponse = {
+        ...fallbackItinerary,
+        locationImages,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          processingTime: Date.now() - globalMonitor['startTime'],
+          aiModel: 'fallback-enhanced',
+          imageCount: Object.keys(locationImages).length,
+          cityConfig: cityConfig ? 'enhanced' : 'standard',
+          version: '2.0.0-fallback',
+          note: 'Generated using fallback due to API configuration'
+        }
+      }
+
+      globalMonitor.finish(true)
+      return NextResponse.json(fallbackResponse)
     }
 
     // Get city-specific configuration
@@ -373,10 +401,17 @@ IMPORTANT REQUIREMENTS:
 
     } catch (aiError) {
       aiMonitor.error(aiError as Error)
-      globalMonitor.log('AI service failed, generating fallback itinerary')
-      
+      globalMonitor.log('AI service failed, generating enhanced fallback itinerary')
+
       // Generate enhanced fallback itinerary
       itinerary = generateEnhancedFallbackItinerary(city, days, budget, cityConfig)
+
+      // Add fallback metadata
+      if (itinerary && !itinerary.metadata) {
+        itinerary.metadata = {
+          fallbackReason: aiError instanceof Error ? aiError.message : 'AI service error'
+        }
+      }
     }
 
     // Validate and enhance the itinerary structure
