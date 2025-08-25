@@ -151,7 +151,7 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[80vh] flex flex-col"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] md:h-[80vh] flex flex-col mx-4 md:mx-0"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -175,7 +175,7 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
             </div>
 
             {/* Search and Filters */}
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -189,11 +189,11 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   value={filter.sort}
                   onChange={(e) => setFilter(prev => ({ ...prev, sort: e.target.value }))}
-                  className="form-select min-w-32"
+                  className="form-select w-full sm:min-w-32"
                 >
                   <option value="popular">Popular</option>
                   <option value="recent">Recent</option>
@@ -233,7 +233,7 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
                 </p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {filteredTrips.map((trip) => (
                   <motion.div
                     key={trip.id}
@@ -242,7 +242,7 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
                     className="card group hover:shadow-lg transition-all duration-300"
                   >
                     {/* Trip Image */}
-                    <div className="relative h-48 -m-6 mb-4 rounded-t-2xl overflow-hidden">
+                    <div className="relative h-40 sm:h-48 -m-6 mb-4 rounded-t-2xl overflow-hidden">
                       <img
                         src={trip.thumbnail}
                         alt={trip.title}
@@ -264,9 +264,9 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
                       </div>
                       
                       {/* City and Days */}
-                      <div className="absolute bottom-3 left-3 text-white">
-                        <h3 className="font-bold text-lg mb-1">{trip.city}</h3>
-                        <div className="flex items-center space-x-3 text-sm opacity-90">
+                      <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 text-white">
+                        <h3 className="font-bold text-base sm:text-lg mb-1">{trip.city}</h3>
+                        <div className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm opacity-90">
                           <span className="flex items-center">
                             <Calendar className="w-3 h-3 mr-1" />
                             {trip.days} days
@@ -282,8 +282,8 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
                     {/* Trip Info */}
                     <div className="space-y-3">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-1 line-clamp-2">{trip.title}</h4>
-                        <p className="text-small text-gray-600 line-clamp-2">{trip.description}</p>
+                        <h4 className="font-semibold text-gray-900 mb-1 line-clamp-2 text-sm sm:text-base">{trip.title}</h4>
+                        <p className="text-xs sm:text-small text-gray-600 line-clamp-2">{trip.description}</p>
                       </div>
 
                       {/* Tags */}
@@ -320,13 +320,13 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
 
                       {/* Footer */}
                       <div className="pt-3 border-t border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-gray-500">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="text-gray-500 truncate max-w-[120px] sm:max-w-none">
                             by <span className="font-medium">{trip.author}</span>
                           </div>
-                          
-                          <div className="flex items-center space-x-3">
-                            <div className="flex items-center space-x-1 text-xs text-gray-500">
+
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <div className="flex items-center space-x-1 text-gray-500">
                               <Eye className="w-3 h-3" />
                               <span>{trip.views}</span>
                             </div>
@@ -357,11 +357,11 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
 
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-            <div className="text-center">
-              <p className="text-small text-gray-600 mb-2">
+            <div className="text-center px-4">
+              <p className="text-xs sm:text-small text-gray-600 mb-3">
                 Love traveling? Share your own amazing itinerary with the community!
               </p>
-              <button className="btn-outline">
+              <button className="btn-outline w-full sm:w-auto">
                 Share Your Trip
               </button>
             </div>
