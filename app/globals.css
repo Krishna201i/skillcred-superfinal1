@@ -2,19 +2,388 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .glass-card {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-xl;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
   
-  .glass-input {
-    @apply bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg;
+  /* Modern color palette inspired by tripplanner.ai */
+  --primary-green: #047857;
+  --primary-green-light: #10b981;
+  --primary-green-dark: #065f46;
+  --accent-blue: #3b82f6;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border-light: #e5e7eb;
+  --bg-light: #f9fafb;
+  --bg-white: #ffffff;
+  --shadow-light: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-large: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: white;
+  color: #1f2937; /* Explicit dark color for good contrast */
+  line-height: 1.6;
+}
+
+body {
+  background: white; /* Simplified background */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Modern button styles */
+.btn-primary {
+  @apply bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+.btn-outline {
+  @apply bg-transparent hover:bg-green-50 text-green-700 font-medium py-2 px-6 rounded-full border border-green-200 transition-all duration-200;
+}
+
+/* Modern card styles */
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-200 hover:shadow-md;
+}
+
+.card-elevated {
+  @apply bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl;
+}
+
+/* Form styles - Ensuring text visibility */
+.form-input {
+  @apply w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200;
+  color: #111827 !important; /* Force dark text */
+}
+
+.form-select {
+  @apply w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200;
+  color: #111827 !important; /* Force dark text */
+}
+
+/* Typography - Ensuring proper contrast and visibility */
+.heading-xl {
+  @apply text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight;
+  color: #111827 !important; /* Force dark color */
+}
+
+.heading-lg {
+  @apply text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight;
+  color: #111827 !important; /* Force dark color */
+}
+
+.heading-md {
+  @apply text-2xl md:text-3xl font-bold text-gray-900 leading-tight;
+  color: #111827 !important; /* Force dark color */
+}
+
+.heading-sm {
+  @apply text-xl md:text-2xl font-semibold text-gray-900 leading-tight;
+  color: #111827 !important; /* Force dark color */
+}
+
+.text-subtitle {
+  @apply text-lg md:text-xl text-gray-600 leading-relaxed;
+  color: #4b5563 !important; /* Force gray color */
+}
+
+.text-body {
+  @apply text-base text-gray-700 leading-relaxed;
+  color: #374151 !important; /* Force gray color */
+}
+
+.text-small {
+  @apply text-sm text-gray-600;
+  color: #4b5563 !important; /* Force gray color */
+}
+
+/* Navigation styles */
+.nav-header {
+  @apply bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50;
+}
+
+.nav-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between;
+}
+
+.logo {
+  @apply flex items-center space-x-3 font-bold text-xl text-gray-900;
+}
+
+/* Layout utilities */
+.section {
+  @apply py-16 md:py-24;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.container-narrow {
+  @apply max-w-4xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.container-tight {
+  @apply max-w-2xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Leaflet map styles */
-.leaflet-container {
-  height: 300px;
-  width: 100%;
-  border-radius: 12px;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading states */
+.loading-skeleton {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-green-700;
+}
+
+/* Ensure all text elements have proper contrast */
+p, span, div, button, input, select, textarea, label {
+  color: inherit;
+}
+
+/* Prevent any transparent text issues */
+* {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure buttons have proper text color */
+button {
+  color: inherit;
+}
+
+/* Ensure links are visible */
+a {
+  color: inherit;
+  opacity: 1;
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .heading-xl {
+    @apply text-4xl leading-tight;
+  }
+
+  .heading-lg {
+    @apply text-3xl leading-tight;
+  }
+
+  .heading-md {
+    @apply text-xl;
+  }
+
+  .section {
+    @apply py-8;
+  }
+
+  .container {
+    @apply px-3;
+  }
+
+  .container-tight {
+    @apply px-3;
+  }
+
+  .nav-container {
+    @apply px-3 h-14;
+  }
+
+  .btn-primary {
+    @apply py-2.5 px-6 text-sm;
+  }
+
+  .btn-secondary {
+    @apply py-2 px-4 text-sm;
+  }
+
+  .card {
+    @apply p-4;
+  }
+
+  .card-elevated {
+    @apply p-6;
+  }
+}
+
+@media (max-width: 480px) {
+  .heading-xl {
+    @apply text-3xl;
+  }
+
+  .nav-container {
+    @apply flex-col h-auto py-3 space-y-2;
+  }
+
+  .logo {
+    @apply text-lg;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none;
+  }
+  
+  .print-only {
+    display: block;
+  }
+}
+
+/* Focus styles for accessibility */
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-green-500 ring-offset-2;
+}
+
+/* Gradient backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0f9ff 100%);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+}
+
+/* Interactive elements */
+.interactive {
+  @apply cursor-pointer transition-all duration-200 hover:scale-105;
+}
+
+.interactive:active {
+  @apply scale-95;
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 768px) {
+  .interactive {
+    @apply hover:scale-100; /* Disable hover scaling on mobile */
+  }
+
+  button {
+    @apply min-h-[44px]; /* Minimum touch target size */
+  }
+
+  .form-input, .form-select {
+    @apply min-h-[44px] text-base; /* Prevent zoom on iOS */
+  }
+}
+
+/* Improved line clamping for responsive text */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Safe area adjustments for mobile devices with notches */
+@supports (padding: max(0px)) {
+  .nav-header {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .container {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
 }
