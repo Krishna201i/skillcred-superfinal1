@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       stats: {
         totalTrips: communityTrips.length,
         featuredTrips: communityTrips.filter(t => t.featured).length,
-        cities: [...new Set(communityTrips.map(t => t.city))],
+        cities: Array.from(new Set(communityTrips.map(t => t.city))),
         popularTags: getPopularTags()
       }
     }

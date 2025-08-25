@@ -227,8 +227,8 @@ export async function GET(request: NextRequest) {
       error: error instanceof Error ? error.message : 'Timeout test failed',
       errorType: error instanceof TimeoutError ? 'timeout' : 'general',
       timestamp: new Date().toISOString(),
-      testTimeout,
-      simulateHang
+      testTimeout: 5000, // Default timeout value
+      simulateHang: false // Default hang value
     }
 
     return NextResponse.json(errorResponse, { 

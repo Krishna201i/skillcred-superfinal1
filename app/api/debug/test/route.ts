@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         pexels: !!process.env.PEXELS_API_KEY
       },
       performance: {
-        responseTime: null // Will be set below
+        responseTime: 0 // Will be set below
       }
     }
     

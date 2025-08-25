@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     if (validResults.length > 0) {
       const totalSize = validResults.reduce((sum, r) => sum + (r.validation?.size || 0), 0)
       summary.avgFileSize = Math.round(totalSize / validResults.length)
-      summary.supportedFormats = [...new Set(validResults.map(r => r.validation?.format).filter(Boolean))]
+      summary.supportedFormats = Array.from(new Set(validResults.map(r => r.validation?.format).filter(Boolean)))
     }
     
     const processingTime = monitor.finish(true)

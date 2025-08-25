@@ -1,15 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PerformanceMonitor } from '@/app/utils/timeout'
 
-// In-memory storage reference (same as in parent route)
-// In a real app, this would be imported from a shared data service
+// In-memory storage for community trips (same as parent route)
+let communityTrips: any[] = [
+  {
+    id: '1',
+    title: 'Amazing 5-Day Tokyo Adventure',
+    description: 'Perfect mix of traditional and modern Tokyo with amazing food experiences',
+    author: 'TravelExpert2024',
+    city: 'Tokyo',
+    days: 5,
+    budget: '₹150000',
+    tags: ['Culture', 'Food', 'Adventure'],
+    likes: 45,
+    views: 234,
+    createdAt: '2024-01-15T10:00:00Z',
+    featured: true,
+    difficulty: 'Moderate',
+    season: 'Spring',
+    highlights: ['Cherry Blossoms', 'Sushi Experience', 'Temple Visits'],
+    thumbnail: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=400'
+  },
+  {
+    id: '2',
+    title: 'Mumbai Street Food Paradise',
+    description: 'Ultimate guide to Mumbai\'s incredible street food scene and local markets',
+    author: 'FoodieMumbai',
+    city: 'Mumbai',
+    days: 3,
+    budget: '₹25000',
+    tags: ['Food', 'Culture', 'Local Experience'],
+    likes: 67,
+    views: 189,
+    createdAt: '2024-01-10T14:30:00Z',
+    featured: true,
+    difficulty: 'Easy',
+    season: 'Winter',
+    highlights: ['Vada Pav Tour', 'Chowpatty Beach', 'Crawford Market'],
+    thumbnail: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=400'
+  },
+  {
+    id: '3',
+    title: 'Delhi Heritage Walk',
+    description: 'Explore Old and New Delhi\'s rich history and architectural marvels',
+    author: 'HistoryBuff',
+    city: 'Delhi',
+    days: 4,
+    budget: '₹40000',
+    tags: ['History', 'Architecture', 'Culture'],
+    likes: 33,
+    views: 156,
+    createdAt: '2024-01-08T09:15:00Z',
+    featured: false,
+    difficulty: 'Moderate',
+    season: 'Winter',
+    highlights: ['Red Fort', 'India Gate', 'Humayun\'s Tomb'],
+    thumbnail: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=400'
+  }
+]
+
+// Helper functions
 const getCommunityTrips = () => {
-  // This would normally be a database call
-  return global.communityTrips || []
+  return communityTrips
 }
 
 const setCommunityTrips = (trips: any[]) => {
-  global.communityTrips = trips
+  communityTrips = trips
 }
 
 // GET endpoint to fetch a specific trip

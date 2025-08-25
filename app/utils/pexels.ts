@@ -347,9 +347,14 @@ export const FALLBACK_CITY_IMAGES: { [key: string]: Partial<PexelsImage> } = {
     url: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg',
     photographer: 'Fallback Image',
     src: {
-      medium: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=800',
+      original: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg',
+      large2x: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=1200',
       large: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=1200',
-      original: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg'
+      medium: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=800',
+      small: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portrait: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=400',
+      landscape: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tiny: 'https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=200'
     }
   },
   'tokyo': {
@@ -357,9 +362,14 @@ export const FALLBACK_CITY_IMAGES: { [key: string]: Partial<PexelsImage> } = {
     url: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg',
     photographer: 'Fallback Image',
     src: {
-      medium: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=800',
+      original: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg',
+      large2x: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=1200',
       large: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=1200',
-      original: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg'
+      medium: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=800',
+      small: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portrait: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=400',
+      landscape: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tiny: 'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&cs=tinysrgb&w=200'
     }
   },
   'delhi': {
@@ -367,9 +377,14 @@ export const FALLBACK_CITY_IMAGES: { [key: string]: Partial<PexelsImage> } = {
     url: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg',
     photographer: 'Fallback Image',
     src: {
-      medium: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=800',
+      original: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg',
+      large2x: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=1200',
       large: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=1200',
-      original: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg'
+      medium: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=800',
+      small: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portrait: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=400',
+      landscape: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tiny: 'https://images.pexels.com/photos/1542620/pexels-photo-1542620.jpeg?auto=compress&cs=tinysrgb&w=200'
     }
   }
 }

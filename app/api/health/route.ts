@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       metrics: {
         responseTime: 0,
         requestCount: 0 // In a real app, this would be tracked
-      }
+      },
+      circuitBreakers: {} as any
     }
     
     // Check external service availability
