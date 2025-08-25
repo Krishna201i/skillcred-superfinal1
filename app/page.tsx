@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  MapPin, Calendar, DollarSign, Plane, Download, Save, Moon, Sun, 
-  Image as ImageIcon, Utensils, Coffee, Wine, Pizza, ArrowRight, 
+import {
+  MapPin, Calendar, DollarSign, Plane, Download, Save, Moon, Sun,
+  Image as ImageIcon, Utensils, Coffee, Wine, Pizza, ArrowRight,
   ArrowLeft, Sparkles, Globe, Users, Star, Check, X
 } from 'lucide-react'
+import CommunityTripsModal from './components/CommunityTripsModal'
 
 // Types (keeping existing interfaces)
 interface ItineraryRequest {
@@ -127,6 +128,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [savedItineraries, setSavedItineraries] = useState<ItineraryResponse[]>([])
+  const [showCommunityTrips, setShowCommunityTrips] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('savedItineraries')
@@ -237,7 +239,10 @@ export default function Home() {
             <span>Trip Planner AI</span>
           </div>
           <div className="flex items-center space-x-6">
-            <button className="text-gray-600 hover:text-gray-900 font-medium">
+            <button
+              onClick={() => setShowCommunityTrips(true)}
+              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+            >
               Community Trips
             </button>
             <button className="btn-outline">
@@ -294,11 +299,20 @@ export default function Home() {
                     <ArrowRight className="w-5 h-5" />
                   </button>
 
-                  {savedItineraries.length > 0 && (
-                    <div className="text-small text-gray-500">
-                      You have {savedItineraries.length} saved trip{savedItineraries.length !== 1 ? 's' : ''}
-                    </div>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                    {savedItineraries.length > 0 && (
+                      <div className="text-small text-gray-500">
+                        You have {savedItineraries.length} saved trip{savedItineraries.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowCommunityTrips(true)}
+                      className="btn-secondary inline-flex items-center space-x-2"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Explore Community Trips</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Features Grid */}
@@ -879,6 +893,12 @@ export default function Home() {
             </div>
           </section>
         )}
+
+        {/* Community Trips Modal */}
+        <CommunityTripsModal
+          isOpen={showCommunityTrips}
+          onClose={() => setShowCommunityTrips(false)}
+        />
       </main>
     </div>
   )
