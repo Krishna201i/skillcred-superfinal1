@@ -117,7 +117,12 @@ export default function CommunityTripsModal({ isOpen, onClose }: CommunityTripsM
         // Copy share URL to clipboard
         if (navigator.clipboard && data.shareUrl) {
           await navigator.clipboard.writeText(data.shareUrl)
-          alert('Share link copied to clipboard!')
+          // Show a better notification
+          const notification = document.createElement('div')
+          notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50'
+          notification.textContent = 'Share link copied to clipboard!'
+          document.body.appendChild(notification)
+          setTimeout(() => document.body.removeChild(notification), 3000)
         }
       }
     } catch (error) {

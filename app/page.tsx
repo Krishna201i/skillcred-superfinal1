@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MapPin, Calendar, DollarSign, Plane, Download, Save, Moon, Sun,
-  Image as ImageIcon, Utensils, Coffee, Wine, Pizza, ArrowRight,
-  ArrowLeft, Sparkles, Globe, Users, Star, Check, X
+  MapPin, Calendar, DollarSign, Plane, Download, Save, 
+  ArrowRight, ArrowLeft, Sparkles, Globe, Users, Star, 
+  Check, X, RefreshCw, AlertCircle, Wifi, WifiOff
 } from 'lucide-react'
 import CommunityTripsModal from './components/CommunityTripsModal'
 
-// Types (keeping existing interfaces)
+// Types
 interface ItineraryRequest {
   city: string
   budget: string
@@ -94,6 +94,12 @@ interface ItineraryResponse {
     imageCount: number
     cityConfig: string
     version: string
+    realDataSources?: {
+      locations: string
+      weather: string
+      images: string
+      ai: string
+    }
   }
 }
 
@@ -129,6 +135,23 @@ export default function Home() {
   const [error, setError] = useState('')
   const [savedItineraries, setSavedItineraries] = useState<ItineraryResponse[]>([])
   const [showCommunityTrips, setShowCommunityTrips] = useState(false)
+  const [sessionId] = useState(() => crypto.randomUUID())
+  const [generationCount, setGenerationCount] = useState(0)
+  const [isOnline, setIsOnline] = useState(true)
+
+  // Check online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('savedItineraries')
@@ -163,21 +186,32 @@ export default function Home() {
       return
     }
 
+    if (!isOnline) {
+      setError('Internet connection required for real-time data')
+      return
+    }
+
     setCurrentStep(STEPS.GENERATING)
     setLoading(true)
     setError('')
+    setGenerationCount(prev => prev + 1)
 
     try {
       const response = await fetch('/api/itinerary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Session-ID': sessionId,
+          'X-Generation-Count': generationCount.toString()
         },
         body: JSON.stringify({
           ...formData,
+          sessionId,
+          generationCount,
           includeWeather: true,
           includeCulturalTips: true,
-          imageSize: 'medium'
+          imageSize: 'medium',
+          realTimeData: true
         }),
       })
 
@@ -186,7 +220,6 @@ export default function Home() {
         try {
           const errorData = await response.text()
           console.error('API Error:', response.status, errorData)
-          // Try to parse error message from response
           try {
             const errorObj = JSON.parse(errorData)
             errorMessage = errorObj.error || errorMessage
@@ -199,18 +232,12 @@ export default function Home() {
         throw new Error(errorMessage)
       }
 
-      let data: any
-      try {
-        data = await response.json()
-      } catch (e) {
-        console.error('Failed to parse response JSON:', e)
-        throw new Error('Invalid response from server')
-      }
+      const data = await response.json()
       setItinerary(data)
       setCurrentStep(STEPS.RESULTS)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
-      setCurrentStep(STEPS.INTERESTS) // Go back to last step
+      setCurrentStep(STEPS.INTERESTS)
     } finally {
       setLoading(false)
     }
@@ -222,6 +249,9 @@ export default function Home() {
     const updated = [...savedItineraries, itinerary]
     setSavedItineraries(updated)
     localStorage.setItem('savedItineraries', JSON.stringify(updated))
+    
+    // Show success message
+    alert('Trip saved successfully!')
   }
 
   const toggleInterest = (interest: string) => {
@@ -243,27 +273,49 @@ export default function Home() {
     })
     setItinerary(null)
     setError('')
+    setGenerationCount(0)
+  }
+
+  const startNewTrip = () => {
+    setCurrentStep(STEPS.DESTINATION)
+    setFormData({
+      city: '',
+      budget: '',
+      days: 3,
+      interests: []
+    })
+    setItinerary(null)
+    setError('')
   }
 
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation Header */}
-      <nav className="nav-header">
-        <div className="nav-container">
-          <div className="logo">
-            <div className="w-8 h-8 bg-gradient-green rounded-lg flex items-center justify-center">
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3 font-bold text-xl text-gray-900">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center">
               <Plane className="w-5 h-5 text-white" />
             </div>
             <span>Trip Planner AI</span>
           </div>
-          <div className="flex items-center space-x-6">
+          
+          <div className="flex items-center space-x-4">
+            {/* Online Status Indicator */}
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs ${
+              isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+            
             <button
               onClick={() => setShowCommunityTrips(true)}
               className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
             >
               Community Trips
             </button>
-            <button className="btn-outline">
+            <button className="bg-transparent hover:bg-green-50 text-green-700 font-medium py-2 px-6 rounded-full border border-green-200 transition-all duration-200">
               Sign In
             </button>
           </div>
@@ -280,12 +332,14 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight text-center">
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 {/* AI Assistant Avatar */}
                 <motion.div 
-                  className="mx-auto w-24 h-24 bg-gradient-green rounded-full flex items-center justify-center mb-8 float"
+                  className="mx-auto w-24 h-24 bg-gradient-to-r from-green-600 to-green-700 rounded-full flex items-center justify-center mb-8"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 >
                   <Sparkles className="w-12 h-12 text-white" />
                 </motion.div>
@@ -293,39 +347,40 @@ export default function Home() {
                 <div className="mb-8">
                   <div className="inline-flex items-center space-x-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
                     <Sparkles className="w-4 h-4" />
-                    <span>Meet TripAI - Your Smart Travel Assistant</span>
+                    <span>Powered by Real-Time Data & AI</span>
                   </div>
                 </div>
 
-                <h1 className="heading-xl mb-6">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight mb-6">
                   Your Next Journey,
                   <br />
-                  <span className="text-green-700">Optimized</span>
+                  <span className="text-green-700">Perfectly Planned</span>
                 </h1>
 
-                <p className="text-subtitle mb-12 max-w-2xl mx-auto">
-                  Build, personalize, and optimize your itineraries with our free AI trip 
-                  planner. Designed for vacations, workations, and everyday adventures.
+                <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-12 max-w-3xl mx-auto">
+                  Create personalized travel itineraries using real-time location data, live weather updates, 
+                  and AI-powered recommendations. Every suggestion is based on actual places and current information.
                 </p>
 
                 <div className="space-y-6">
                   <button 
-                    onClick={nextStep}
-                    className="btn-primary inline-flex items-center space-x-2"
+                    onClick={startNewTrip}
+                    className="bg-green-700 hover:bg-green-800 text-white font-semibold py-4 px-10 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center space-x-3 text-lg"
                   >
-                    <span>Create a new trip</span>
-                    <ArrowRight className="w-5 h-5" />
+                    <Sparkles className="w-6 h-6" />
+                    <span>Plan My Perfect Trip</span>
+                    <ArrowRight className="w-6 h-6" />
                   </button>
 
                   <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
                     {savedItineraries.length > 0 && (
-                      <div className="text-small text-gray-500">
+                      <div className="text-sm text-gray-500">
                         You have {savedItineraries.length} saved trip{savedItineraries.length !== 1 ? 's' : ''}
                       </div>
                     )}
                     <button
                       onClick={() => setShowCommunityTrips(true)}
-                      className="btn-secondary inline-flex items-center space-x-2"
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
                     >
                       <Users className="w-4 h-4" />
                       <span>Explore Community Trips</span>
@@ -333,34 +388,74 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Features Grid */}
+                {/* Real-Time Features Grid */}
                 <div className="grid md:grid-cols-3 gap-8 mt-20">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Globe className="w-6 h-6 text-green-700" />
+                  <motion.div 
+                    className="text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Globe className="w-8 h-8 text-green-700" />
                     </div>
-                    <h3 className="heading-sm mb-2">AI-Powered Planning</h3>
-                    <p className="text-body text-gray-600">
-                      Smart recommendations based on your preferences and travel style
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight mb-3">Real-Time Data</h3>
+                    <p className="text-base text-gray-700 leading-relaxed">
+                      Live location data from OpenStreetMap, real weather updates, and current attraction information
                     </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <MapPin className="w-6 h-6 text-blue-700" />
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <MapPin className="w-8 h-8 text-blue-700" />
                     </div>
-                    <h3 className="heading-sm mb-2">Real Locations</h3>
-                    <p className="text-body text-gray-600">
-                      Authentic places with real addresses and cultural insights
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight mb-3">Authentic Locations</h3>
+                    <p className="text-base text-gray-700 leading-relaxed">
+                      Real addresses, actual restaurants, and verified attractions with precise coordinates
                     </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Utensils className="w-6 h-6 text-purple-700" />
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Sparkles className="w-8 h-8 text-purple-700" />
                     </div>
-                    <h3 className="heading-sm mb-2">Local Experiences</h3>
-                    <p className="text-body text-gray-600">
-                      Discover hidden gems and authentic local dining experiences
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight mb-3">AI-Powered</h3>
+                    <p className="text-base text-gray-700 leading-relaxed">
+                      Google Gemini AI creates unique itineraries based on your preferences and real data
                     </p>
+                  </motion.div>
+                </div>
+
+                {/* API Status Indicators */}
+                <div className="mt-16 p-6 bg-gray-50 rounded-2xl">
+                  <h4 className="font-semibold text-gray-900 mb-4">Live Data Sources</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-600">OpenStreetMap</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-600">Weather API</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-600">Pexels Images</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-600">Google Gemini AI</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -374,46 +469,58 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight">
+              <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                  <h2 className="heading-lg mb-4">Where would you like to go?</h2>
-                  <p className="text-subtitle text-gray-600">
-                    Tell us your dream destination and we'll create the perfect itinerary
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-4">Where would you like to go?</h2>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
+                    Enter any city worldwide and we'll fetch real-time data to create your perfect itinerary
                   </p>
                 </div>
 
-                <div className="card-elevated max-w-md mx-auto">
-                  <div className="mb-6">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl">
+                  <div className="mb-8">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Destination
+                      Destination City
                     </label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                      placeholder="e.g., Mumbai, Tokyo, Delhi"
-                      className="form-input text-lg"
+                      placeholder="e.g., Mumbai, Tokyo, Paris, New York"
+                      className="w-full px-4 py-4 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-lg"
                       autoFocus
                     />
+                    <p className="mt-2 text-sm text-gray-500">
+                      We'll fetch real attractions, restaurants, and current weather data for your destination
+                    </p>
                   </div>
 
                   <div className="flex justify-between">
-                    <button onClick={prevStep} className="btn-secondary inline-flex items-center space-x-2">
+                    <button 
+                      onClick={resetForm} 
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
+                    >
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
                     <button
                       onClick={nextStep}
-                      disabled={!formData.city}
-                      className="btn-primary inline-flex items-center space-x-2 disabled:cursor-not-allowed"
-                      style={!formData.city ? {opacity: 0.6} : {}}
+                      disabled={!formData.city || !isOnline}
+                      className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
+                  
+                  {!isOnline && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-sm text-red-700">Internet connection required for real-time data</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -426,46 +533,53 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight">
+              <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                  <h2 className="heading-lg mb-4">How long is your trip?</h2>
-                  <p className="text-subtitle text-gray-600">
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-4">How long is your trip?</h2>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
                     Choose the duration that works best for your schedule
                   </p>
                 </div>
 
-                <div className="card-elevated max-w-md mx-auto">
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl">
+                  <div className="mb-8">
+                    <label className="block text-sm font-medium text-gray-700 mb-4">
                       Trip Duration
                     </label>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="grid grid-cols-3 gap-3 mb-6">
                       {[1, 2, 3, 4, 5, 6, 7, 10, 14].map(d => (
                         <button
                           key={d}
                           onClick={() => setFormData(prev => ({ ...prev, days: d }))}
-                          className={`p-3 rounded-xl border text-center font-medium transition-all ${
+                          className={`p-4 rounded-xl border text-center font-medium transition-all ${
                             formData.days === d
-                              ? 'border-green-500 bg-green-50 text-green-700'
-                              : 'border-gray-200 hover:border-gray-300'
+                              ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
-                          {d} {d === 1 ? 'Day' : 'Days'}
+                          <div className="text-lg font-bold">{d}</div>
+                          <div className="text-xs">{d === 1 ? 'Day' : 'Days'}</div>
                         </button>
                       ))}
                     </div>
+                    <p className="text-sm text-gray-500">
+                      Longer trips allow for more detailed exploration and diverse experiences
+                    </p>
                   </div>
 
                   <div className="flex justify-between">
-                    <button onClick={prevStep} className="btn-secondary inline-flex items-center space-x-2">
+                    <button 
+                      onClick={prevStep} 
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
+                    >
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
                     <button 
                       onClick={nextStep}
-                      className="btn-primary inline-flex items-center space-x-2"
+                      className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center space-x-2"
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
@@ -483,43 +597,51 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight">
+              <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                  <h2 className="heading-lg mb-4">What's your budget?</h2>
-                  <p className="text-subtitle text-gray-600">
-                    We'll optimize your itinerary to match your spending preferences
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-4">What's your budget?</h2>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
+                    We'll optimize your itinerary to match your spending preferences with real pricing data
                   </p>
                 </div>
 
-                <div className="card-elevated max-w-md mx-auto">
-                  <div className="mb-6">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl">
+                  <div className="mb-8">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Budget (INR)
+                      Total Budget (INR)
                     </label>
                     <input
                       type="text"
                       value={formData.budget}
                       onChange={(e) => setFormData(prev => ({ ...prev, budget: e.target.value }))}
                       placeholder="e.g., 50000"
-                      className="form-input text-lg"
+                      className="w-full px-4 py-4 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-lg"
                     />
-                    <div className="mt-3 text-small text-gray-500">
-                      This includes accommodation, food, activities, and transportation
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-700 font-medium mb-2">Budget includes:</p>
+                      <ul className="text-sm text-blue-600 space-y-1">
+                        <li>• Accommodation (40%)</li>
+                        <li>• Food & Dining (30%)</li>
+                        <li>• Activities & Attractions (20%)</li>
+                        <li>• Local Transportation (10%)</li>
+                      </ul>
                     </div>
                   </div>
 
                   <div className="flex justify-between">
-                    <button onClick={prevStep} className="btn-secondary inline-flex items-center space-x-2">
+                    <button 
+                      onClick={prevStep} 
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
+                    >
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
                     <button
                       onClick={nextStep}
                       disabled={!formData.budget}
-                      className="btn-primary inline-flex items-center space-x-2 disabled:cursor-not-allowed"
-                      style={!formData.budget ? {opacity: 0.6} : {}}
+                      className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
@@ -537,27 +659,27 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight">
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                  <h2 className="heading-lg mb-4">What interests you?</h2>
-                  <p className="text-subtitle text-gray-600">
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-4">What interests you?</h2>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
                     Select your preferences to personalize your experience (optional)
                   </p>
                 </div>
 
-                <div className="card-elevated">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl">
                   <div className="mb-8">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {travelInterests.map((interest) => (
                         <button
                           key={interest}
                           onClick={() => toggleInterest(interest)}
-                          className={`p-3 rounded-xl text-left text-sm font-medium transition-all ${
+                          className={`p-4 rounded-xl text-left text-sm font-medium transition-all ${
                             formData.interests.includes(interest)
-                              ? 'border-green-500 bg-green-50 text-green-700 border-2'
-                              : 'border border-gray-200 hover:border-gray-300'
+                              ? 'border-green-500 bg-green-50 text-green-700 border-2 shadow-md'
+                              : 'border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -569,25 +691,36 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
+                    
+                    <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-green-700">
+                        Selected {formData.interests.length} interests. These will help us find the most relevant real attractions and experiences in {formData.city}.
+                      </p>
+                    </div>
                   </div>
 
                   {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center space-x-2">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
                       <p className="text-red-700 text-sm">{error}</p>
                     </div>
                   )}
 
                   <div className="flex justify-between">
-                    <button onClick={prevStep} className="btn-secondary inline-flex items-center space-x-2">
+                    <button 
+                      onClick={prevStep} 
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
+                    >
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back</span>
                     </button>
                     <button 
                       onClick={handleGenerate}
-                      className="btn-primary inline-flex items-center space-x-2"
+                      disabled={!isOnline}
+                      className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Create My Trip</span>
+                      <Sparkles className="w-5 h-5" />
+                      <span>Generate My Trip</span>
                     </button>
                   </div>
                 </div>
@@ -601,31 +734,70 @@ export default function Home() {
               key="generating"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="section"
+              className="py-16 md:py-24"
             >
-              <div className="container-tight text-center">
-                <div className="card-elevated max-w-md mx-auto">
-                  <div className="mb-6">
-                    <div className="loading-spinner mx-auto mb-4"></div>
-                    <h3 className="heading-sm mb-2">Creating your perfect trip...</h3>
-                    <p className="text-body text-gray-600">
-                      Our AI is analyzing the best attractions, restaurants, and experiences in {formData.city}
+              <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 transition-all duration-300 hover:shadow-xl">
+                  <div className="mb-8">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-700 mx-auto mb-6"></div>
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight mb-3">Creating your perfect trip...</h3>
+                    <p className="text-base text-gray-700 leading-relaxed mb-6">
+                      Our AI is analyzing real-time data for {formData.city} to create your personalized itinerary
                     </p>
                   </div>
                   
-                  <div className="space-y-2 text-left">
-                    <div className="flex items-center space-x-3">
+                  <div className="space-y-4 text-left max-w-md mx-auto">
+                    <motion.div 
+                      className="flex items-center space-x-3"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-small text-gray-600">Finding top attractions...</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-600">Fetching real location data from OpenStreetMap...</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center space-x-3"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1 }}
+                    >
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-small text-gray-600">Discovering local restaurants...</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-600">Getting current weather conditions...</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center space-x-3"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.5 }}
+                    >
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-small text-gray-600">Optimizing your schedule...</span>
-                    </div>
+                      <span className="text-sm text-gray-600">Finding authentic restaurants and attractions...</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center space-x-3"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 2 }}
+                    >
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">Generating AI-powered recommendations...</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center space-x-3"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 2.5 }}
+                    >
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">Optimizing your schedule and budget...</span>
+                    </motion.div>
+                  </div>
+                  
+                  <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <strong>Generation #{generationCount}</strong> - Each trip is unique and based on live data
+                    </p>
                   </div>
                 </div>
               </div>
@@ -640,22 +812,38 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               className="py-8"
             >
-              <div className="container">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-8">
-                  <h2 className="heading-lg mb-4">Your {formData.days}-Day Trip to {formData.city}</h2>
-                  <div className="flex justify-center space-x-4">
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-4">
+                    Your {formData.days}-Day Trip to {formData.city}
+                  </h2>
+                  
+                  {/* Real Data Indicators */}
+                  {itinerary.metadata?.realDataSources && (
+                    <div className="mb-6 p-4 bg-green-50 rounded-lg inline-block">
+                      <p className="text-sm text-green-700 font-medium mb-2">✅ Generated with Real-Time Data</p>
+                      <div className="flex flex-wrap gap-2 text-xs text-green-600">
+                        <span>📍 {itinerary.metadata.realDataSources.locations}</span>
+                        <span>🌤️ {itinerary.metadata.realDataSources.weather}</span>
+                        <span>🖼️ {itinerary.metadata.realDataSources.images}</span>
+                        <span>🤖 {itinerary.metadata.realDataSources.ai}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <button
                       onClick={saveItinerary}
-                      className="btn-secondary inline-flex items-center space-x-2"
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-full border border-gray-200 transition-all duration-200 shadow-sm hover:shadow-md inline-flex items-center space-x-2"
                     >
                       <Save className="w-4 h-4" />
                       <span>Save Trip</span>
                     </button>
                     <button
-                      onClick={resetForm}
-                      className="btn-outline inline-flex items-center space-x-2"
+                      onClick={startNewTrip}
+                      className="bg-transparent hover:bg-green-50 text-green-700 font-medium py-3 px-6 rounded-full border border-green-200 transition-all duration-200 inline-flex items-center space-x-2"
                     >
-                      <Plane className="w-4 h-4" />
+                      <RefreshCw className="w-4 h-4" />
                       <span>Plan Another Trip</span>
                     </button>
                   </div>
@@ -663,74 +851,101 @@ export default function Home() {
 
                 {/* City Header Image */}
                 {itinerary.locationImages[formData.city] && (
-                  <div className="mb-8">
-                    <div className="relative h-80 rounded-2xl overflow-hidden">
+                  <div className="mb-12">
+                    <div className="relative h-80 md:h-96 rounded-2xl overflow-hidden">
                       <img
                         src={itinerary.locationImages[formData.city].src.large}
                         alt={formData.city}
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <div className="text-center text-white">
-                          <h3 className="text-4xl font-bold mb-2" style={{color: '#ffffff'}}>{formData.city}</h3>
-                          <p className="text-xl" style={{color: '#ffffff', opacity: 0.95}}>Your {formData.days}-day adventure awaits</p>
+                          <h3 className="text-4xl md:text-5xl font-bold mb-2">{formData.city}</h3>
+                          <p className="text-xl md:text-2xl opacity-90">Your {formData.days}-day adventure awaits</p>
                         </div>
                       </div>
                     </div>
-                    <p className="text-small text-gray-500 mt-2 text-center">
-                      Photo by <span className="underline">{itinerary.locationImages[formData.city].photographer}</span> on Pexels
+                    <p className="text-sm text-gray-500 mt-3 text-center">
+                      Photo by {itinerary.locationImages[formData.city].photographer} on Pexels
                     </p>
                   </div>
                 )}
 
                 {/* Trip Summary */}
-                <div className="card mb-8">
-                  <h3 className="heading-sm mb-4">Trip Overview</h3>
-                  <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-200 hover:shadow-md mb-8">
+                  <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight mb-6">Trip Overview</h3>
+                  <div className="grid md:grid-cols-2 gap-8">
                     <div>
-                      <p className="text-body mb-2"><strong>Total Cost:</strong> ₹{itinerary.summary.totalCost}</p>
+                      <h4 className="font-semibold text-gray-900 mb-3">Budget Breakdown</h4>
+                      <p className="text-base text-gray-700 leading-relaxed mb-3">
+                        <strong>Total Cost:</strong> ₹{itinerary.summary.totalCost}
+                      </p>
                       {itinerary.summary.costBreakdown && (
-                        <div className="text-small text-gray-600 space-y-1">
-                          <p>Accommodation: ₹{itinerary.summary.costBreakdown.accommodation}</p>
-                          <p>Food: ₹{itinerary.summary.costBreakdown.food}</p>
-                          <p>Activities: ₹{itinerary.summary.costBreakdown.activities}</p>
-                          <p>Transportation: ₹{itinerary.summary.costBreakdown.transportation}</p>
+                        <div className="text-sm text-gray-600 space-y-2">
+                          <div className="flex justify-between">
+                            <span>Accommodation:</span>
+                            <span className="font-medium">₹{itinerary.summary.costBreakdown.accommodation}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Food & Dining:</span>
+                            <span className="font-medium">₹{itinerary.summary.costBreakdown.food}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Activities:</span>
+                            <span className="font-medium">₹{itinerary.summary.costBreakdown.activities}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Transportation:</span>
+                            <span className="font-medium">₹{itinerary.summary.costBreakdown.transportation}</span>
+                          </div>
                         </div>
                       )}
                     </div>
                     <div>
-                      <p className="text-body mb-2"><strong>Best Time to Visit:</strong> {itinerary.summary.bestTime}</p>
+                      <h4 className="font-semibold text-gray-900 mb-3">Travel Information</h4>
+                      <p className="text-base text-gray-700 leading-relaxed mb-2">
+                        <strong>Best Time to Visit:</strong> {itinerary.summary.bestTime}
+                      </p>
                       {itinerary.summary.weatherOverview && (
-                        <p className="text-small text-gray-600">{itinerary.summary.weatherOverview}</p>
+                        <p className="text-sm text-gray-600 mb-4">{itinerary.summary.weatherOverview}</p>
+                      )}
+                      
+                      {itinerary.metadata && (
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <p>Generated: {new Date(itinerary.metadata.generatedAt).toLocaleString()}</p>
+                          <p>Processing Time: {itinerary.metadata.processingTime}ms</p>
+                          <p>Images Found: {itinerary.metadata.imageCount}</p>
+                        </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-2">Trip Highlights</h4>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <ul className="space-y-1">
+                  <div className="mt-8 grid md:grid-cols-2 gap-8">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Trip Highlights</h4>
+                      <ul className="space-y-2">
                         {itinerary.summary.highlights.map((highlight, i) => (
-                          <li key={i} className="text-small text-gray-600 flex items-center space-x-2">
+                          <li key={i} className="text-sm text-gray-600 flex items-center space-x-2">
                             <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                             <span>{highlight}</span>
                           </li>
                         ))}
                       </ul>
-                      {itinerary.summary.culturalTips && (
-                        <div>
-                          <h5 className="font-medium mb-2">Cultural Tips</h5>
-                          <ul className="space-y-1">
-                            {itinerary.summary.culturalTips.slice(0, 3).map((tip, i) => (
-                              <li key={i} className="text-small text-gray-600 flex items-start space-x-2">
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                                <span>{tip}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
+                    
+                    {itinerary.summary.culturalTips && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Cultural Tips</h4>
+                        <ul className="space-y-2">
+                          {itinerary.summary.culturalTips.slice(0, 4).map((tip, i) => (
+                            <li key={i} className="text-sm text-gray-600 flex items-start space-x-2">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -742,97 +957,95 @@ export default function Home() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="card"
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-200 hover:shadow-md"
                     >
-                      <div className="mb-6">
-                        <h3 className="heading-sm mb-2">Day {day.day} - {day.date}</h3>
-                        <p className="text-body text-gray-600 mb-2">{day.summary}</p>
-                        {day.weather && (
-                          <p className="text-small text-gray-500">Weather: {day.weather}</p>
-                        )}
+                      <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
+                            Day {day.day} - {new Date(day.date).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </h3>
+                          {day.weather && (
+                            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                              🌤️ {day.weather}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-base text-gray-700 leading-relaxed">{day.summary}</p>
                       </div>
 
-                      {/* Activities */}
+                      {/* Activities Grid */}
                       <div className="grid md:grid-cols-3 gap-6 mb-8">
+                        {/* Morning */}
                         <div>
                           <h4 className="font-semibold text-orange-600 mb-4 flex items-center space-x-2">
-                            <Coffee className="w-4 h-4" />
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                             <span>Morning</span>
                           </h4>
                           {day.morning.map((activity, i) => (
                             <div key={i} className="mb-4 p-4 bg-orange-50 rounded-xl">
-                              <div className="flex items-start space-x-3">
-                                {itinerary.locationImages[activity.location.name] && (
-                                  <img
-                                    src={itinerary.locationImages[activity.location.name].src.medium}
-                                    alt={activity.location.name}
-                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                                  />
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm text-orange-800">{activity.time}</p>
+                                <p className="text-sm font-semibold text-gray-900">{activity.activity}</p>
+                                <p className="text-xs text-gray-600">📍 {activity.location.address}</p>
+                                <p className="text-xs text-gray-700">{activity.description}</p>
+                                {activity.estimatedCost && (
+                                  <p className="text-xs text-green-600 font-medium">💰 {activity.estimatedCost}</p>
                                 )}
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm">{activity.time}</p>
-                                  <p className="text-sm font-medium">{activity.activity}</p>
-                                  <p className="text-xs text-gray-600">{activity.location.name}</p>
-                                  {activity.estimatedCost && (
-                                    <p className="text-xs text-green-600">{activity.estimatedCost}</p>
-                                  )}
-                                </div>
+                                {activity.duration && (
+                                  <p className="text-xs text-blue-600">⏱️ {activity.duration}</p>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
                         
+                        {/* Afternoon */}
                         <div>
                           <h4 className="font-semibold text-blue-600 mb-4 flex items-center space-x-2">
-                            <MapPin className="w-4 h-4" />
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             <span>Afternoon</span>
                           </h4>
                           {day.afternoon.map((activity, i) => (
                             <div key={i} className="mb-4 p-4 bg-blue-50 rounded-xl">
-                              <div className="flex items-start space-x-3">
-                                {itinerary.locationImages[activity.location.name] && (
-                                  <img
-                                    src={itinerary.locationImages[activity.location.name].src.medium}
-                                    alt={activity.location.name}
-                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                                  />
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm text-blue-800">{activity.time}</p>
+                                <p className="text-sm font-semibold text-gray-900">{activity.activity}</p>
+                                <p className="text-xs text-gray-600">📍 {activity.location.address}</p>
+                                <p className="text-xs text-gray-700">{activity.description}</p>
+                                {activity.estimatedCost && (
+                                  <p className="text-xs text-green-600 font-medium">💰 {activity.estimatedCost}</p>
                                 )}
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm">{activity.time}</p>
-                                  <p className="text-sm font-medium">{activity.activity}</p>
-                                  <p className="text-xs text-gray-600">{activity.location.name}</p>
-                                  {activity.estimatedCost && (
-                                    <p className="text-xs text-green-600">{activity.estimatedCost}</p>
-                                  )}
-                                </div>
+                                {activity.duration && (
+                                  <p className="text-xs text-blue-600">⏱️ {activity.duration}</p>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
                         
+                        {/* Evening */}
                         <div>
                           <h4 className="font-semibold text-purple-600 mb-4 flex items-center space-x-2">
-                            <Wine className="w-4 h-4" />
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                             <span>Evening</span>
                           </h4>
                           {day.evening.map((activity, i) => (
                             <div key={i} className="mb-4 p-4 bg-purple-50 rounded-xl">
-                              <div className="flex items-start space-x-3">
-                                {itinerary.locationImages[activity.location.name] && (
-                                  <img
-                                    src={itinerary.locationImages[activity.location.name].src.medium}
-                                    alt={activity.location.name}
-                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                                  />
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm text-purple-800">{activity.time}</p>
+                                <p className="text-sm font-semibold text-gray-900">{activity.activity}</p>
+                                <p className="text-xs text-gray-600">📍 {activity.location.address}</p>
+                                <p className="text-xs text-gray-700">{activity.description}</p>
+                                {activity.estimatedCost && (
+                                  <p className="text-xs text-green-600 font-medium">💰 {activity.estimatedCost}</p>
                                 )}
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm">{activity.time}</p>
-                                  <p className="text-sm font-medium">{activity.activity}</p>
-                                  <p className="text-xs text-gray-600">{activity.location.name}</p>
-                                  {activity.estimatedCost && (
-                                    <p className="text-xs text-green-600">{activity.estimatedCost}</p>
-                                  )}
-                                </div>
+                                {activity.duration && (
+                                  <p className="text-xs text-blue-600">⏱️ {activity.duration}</p>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -842,41 +1055,34 @@ export default function Home() {
                       {/* Dining */}
                       <div>
                         <h4 className="font-semibold text-green-600 mb-4 flex items-center space-x-2">
-                          <Utensils className="w-4 h-4" />
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>Dining Experience</span>
                         </h4>
                         
                         <div className="grid md:grid-cols-3 gap-4">
                           {day.dining.map((meal, i) => (
                             <div key={i} className="p-4 bg-green-50 rounded-xl">
-                              <div className="flex items-start space-x-3">
-                                {itinerary.locationImages[meal.location.name] && (
-                                  <img
-                                    src={itinerary.locationImages[meal.location.name].src.medium}
-                                    alt={meal.restaurant}
-                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                                  />
-                                )}
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-lg">
-                                      {meal.meal === 'Breakfast' ? '☕' : meal.meal === 'Lunch' ? '🍽️' : '🍷'}
-                                    </span>
-                                    <div>
-                                      <p className="font-medium text-sm">{meal.meal}</p>
-                                      <p className="text-sm text-green-700 font-medium">{meal.restaurant}</p>
-                                    </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="text-lg">
+                                    {meal.meal === 'Breakfast' ? '☕' : meal.meal === 'Lunch' ? '🍽️' : '🍷'}
+                                  </span>
+                                  <div>
+                                    <p className="font-medium text-sm text-green-800">{meal.meal}</p>
+                                    <p className="text-sm font-semibold text-gray-900">{meal.restaurant}</p>
                                   </div>
-                                  <p className="text-xs text-gray-600 mb-1">{meal.cuisine}</p>
-                                  <p className="text-xs text-gray-600 mb-1">📍 {meal.location.name}</p>
-                                  <p className="text-xs text-green-600 font-medium">{meal.price}</p>
-                                  {meal.speciality && (
-                                    <p className="text-xs text-gray-500 mt-1">✨ {meal.speciality}</p>
-                                  )}
-                                  {meal.rating && (
-                                    <p className="text-xs text-yellow-600 mt-1">⭐ {meal.rating}</p>
-                                  )}
                                 </div>
+                                <p className="text-xs text-gray-600">{meal.cuisine} • 📍 {meal.location.address}</p>
+                                <p className="text-xs text-green-600 font-medium">💰 {meal.price}</p>
+                                {meal.speciality && (
+                                  <p className="text-xs text-gray-700">✨ {meal.speciality}</p>
+                                )}
+                                {meal.rating && (
+                                  <p className="text-xs text-yellow-600">⭐ {meal.rating}</p>
+                                )}
+                                {meal.culturalNote && (
+                                  <p className="text-xs text-purple-600 italic">🏛️ {meal.culturalNote}</p>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -889,30 +1095,6 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Saved Itineraries Section */}
-        {currentStep === STEPS.WELCOME && savedItineraries.length > 0 && (
-          <section className="section bg-gray-50">
-            <div className="container">
-              <h2 className="heading-md text-center mb-12">Your Saved Trips</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {savedItineraries.slice(0, 6).map((saved, index) => (
-                  <div key={index} className="card">
-                    <h3 className="font-semibold mb-2">
-                      {saved.days.length}-Day Adventure
-                    </h3>
-                    <p className="text-small text-gray-600 mb-2">
-                      Generated: {new Date(saved.metadata?.generatedAt || '').toLocaleDateString()}
-                    </p>
-                    <p className="text-small text-gray-600">
-                      Budget: ₹{saved.summary.totalCost}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* Community Trips Modal */}
         <CommunityTripsModal
